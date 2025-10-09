@@ -1,0 +1,84 @@
+{
+  "name": "splitmark",
+  "version": "1.0.0",
+  "description": "A lightweight CLI Markdown editor with live preview.",
+  "main": "bin/index.js",
+  "type": "module",
+  "bin": {
+    "splitmark": "bin/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/splitmark/splitmark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/splitmark/splitmark/issues"
+  },
+  "homepage": "https://github.com/splitmark/splitmark#readme",
+  "scripts": {
+    "start": "tsx bin/index.js",
+    "dev": "tsx bin/index.js",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:performance": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/performance",
+    "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration",
+    "test:components": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/components"
+  },
+  "keywords": [
+    "cli",
+    "markdown",
+    "editor",
+    "terminal",
+    "preview",
+    "md",
+    "react",
+    "ink",
+    "text-editor",
+    "markdown-editor",
+    "split-view",
+    "live-preview",
+    "terminal-ui",
+    "tui"
+  ],
+  "author": {
+    "name": "Michael Pfeiffer",
+    "email": "mike@michaelvogt.me",
+    "url": "https://github.com/splitmark"
+  },
+  "license": "MIT",
+  "files": [
+    "bin/",
+    "src/",
+    "LICENSE",
+    "README.md",
+    "CONFIG.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@swc/core": "^1.13.5",
+    "@swc/register": "^0.1.10",
+    "chalk": "^5.6.2",
+    "cli-highlight": "^2.1.11",
+    "env-paths": "^3.0.0",
+    "highlight.js": "^11.11.1",
+    "ink": "^6.3.1",
+    "ink-text-input": "^6.0.0",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
+    "react": "^19.2.0",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@swc/jest": "^0.2.39",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
+    "cross-env": "^10.1.0",
+    "ink-testing-library": "^4.0.0",
+    "jest": "^30.2.0",
+    "tsx": "^4.20.6"
+  }
+}

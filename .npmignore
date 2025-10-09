@@ -1,0 +1,46 @@
+# Development files
+dev-files/
+tests/
+coverage/
+.github/
+.claude/
+
+# Configuration files
+.swcrc
+jest.config.js
+.gitignore
+.npmignore
+
+# Documentation (except what's in "files" in package.json)
+CONTRIBUTING.md
+TESTING.md
+IMPLEMENTATION_STATUS.md
+
+# Development dependencies
+node_modules/
+
+# Build artifacts
+*.log
+*.tgz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+
+# Assets not needed in npm package
+splitmark-logo.png
+screenshots/
+demos/

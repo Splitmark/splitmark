@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+.env
+dist/
+build/
+coverage/
+.nyc_output/
+
+.claude/
+
+# Allow dev-files directory but ignore any user-added test files
+# The default test files are tracked in git
+dev-files/*.local.md
