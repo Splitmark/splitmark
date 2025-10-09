@@ -15,6 +15,11 @@ jest.config.js
 CONTRIBUTING.md
 TESTING.md
 IMPLEMENTATION_STATUS.md
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+KNOWN_ISSUES.md
+SECURITY.md
+FUNDING.yml
 
 # Development dependencies
 node_modules/
