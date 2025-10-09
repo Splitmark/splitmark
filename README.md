@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/splitmark.svg)](https://nodejs.org)
 [![Tests](https://github.com/splitmark/splitmark/workflows/Tests/badge.svg)](https://github.com/splitmark/splitmark/actions)
-[![Coverage Status](https://coveralls.io/repos/github/splitmark/splitmark/badge.svg?branch=main)](https://coveralls.io/github/splitmark/splitmark?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/splitmark/splitmark/badge.svg?branch=master)](https://coveralls.io/github/splitmark/splitmark?branch=master)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A lightweight CLI Markdown editor with live preview.
