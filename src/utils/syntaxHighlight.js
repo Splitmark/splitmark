@@ -10,9 +10,9 @@ export function highlightMarkdownLine(line) {
     return [{ text: line || ' ', color: undefined }];
   }
 
-  // Headers (# ## ### etc)
-  if (/^#{1,6}\s/.test(line)) {
-    const match = line.match(/^(#{1,6}\s)(.*)$/);
+  // Headers (# ## ### etc) - using pre-compiled regex
+  if (HEADER_REGEX.test(line)) {
+    const match = line.match(HEADER_MATCH_REGEX);
     if (match) {
       return [
         { text: match[1], color: 'magenta', bold: true },
@@ -21,24 +21,24 @@ export function highlightMarkdownLine(line) {
     }
   }
 
-  // Code blocks (```)
-  if (/^```/.test(line)) {
+  // Code blocks (```) - using pre-compiled regex
+  if (CODE_BLOCK_REGEX.test(line)) {
     return [{ text: line, color: 'cyan' }];
   }
 
-  // Blockquote (>)
-  if (/^>\s/.test(line)) {
+  // Blockquote (>) - using pre-compiled regex
+  if (BLOCKQUOTE_REGEX.test(line)) {
     return [{ text: line, color: 'yellow' }];
   }
 
-  // Horizontal rule (---, ***, ___)
-  if (/^(\*{3,}|-{3,}|_{3,})$/.test(line.trim())) {
+  // Horizontal rule (---, ***, ___) - using pre-compiled regex
+  if (HORIZONTAL_RULE_REGEX.test(line.trim())) {
     return [{ text: line, color: 'gray' }];
   }
 
-  // List items (-, *, +, 1.)
-  if (/^(\s*)([-*+]|\d+\.)\s/.test(line)) {
-    const match = line.match(/^(\s*)([-*+]|\d+\.)(\s.*)$/);
+  // List items (-, *, +, 1.) - using pre-compiled regex
+  if (LIST_ITEM_REGEX.test(line)) {
+    const match = line.match(LIST_ITEM_MATCH_REGEX);
     if (match) {
       return [
         { text: match[1], color: undefined },
@@ -52,6 +52,24 @@ export function highlightMarkdownLine(line) {
   return parseInlineFormatting(line);
 }
 
+// Pre-compile regex patterns for inline formatting (performance optimization)
+const INLINE_PATTERNS = [
+  { regex: /\*\*([^*]+)\*\*/g, color: 'blue', bold: true },     // **bold**
+  { regex: /\*([^*]+)\*/g, color: 'blue', italic: true },        // *italic*
+  { regex: /_([^_]+)_/g, color: 'blue', italic: true },          // _italic_
+  { regex: /`([^`]+)`/g, color: 'cyan' },                        // `code`
+  { regex: /\[([^\]]+)\]\([^)]+\)/g, color: 'blue' },           // [link](url)
+];
+
+// Pre-compile line-level regex patterns (performance optimization)
+const HEADER_REGEX = /^#{1,6}\s/;
+const HEADER_MATCH_REGEX = /^(#{1,6}\s)(.*)$/;
+const CODE_BLOCK_REGEX = /^```/;
+const BLOCKQUOTE_REGEX = /^>\s/;
+const HORIZONTAL_RULE_REGEX = /^(\*{3,}|-{3,}|_{3,})$/;
+const LIST_ITEM_REGEX = /^(\s*)([-*+]|\d+\.)\s/;
+const LIST_ITEM_MATCH_REGEX = /^(\s*)([-*+]|\d+\.)(\s.*)$/;
+
 /**
  * Parse inline formatting like **bold**, *italic*, `code`, [links]
  */
@@ -59,18 +77,9 @@ function parseInlineFormatting(line) {
   const segments = [];
   let pos = 0;
 
-  // Regex patterns for inline formatting
-  const patterns = [
-    { regex: /\*\*([^*]+)\*\*/g, color: 'blue', bold: true },     // **bold**
-    { regex: /\*([^*]+)\*/g, color: 'blue', italic: true },        // *italic*
-    { regex: /_([^_]+)_/g, color: 'blue', italic: true },          // _italic_
-    { regex: /`([^`]+)`/g, color: 'cyan' },                        // `code`
-    { regex: /\[([^\]]+)\]\([^)]+\)/g, color: 'blue' },           // [link](url)
-  ];
-
-  // Find all matches with their positions
+  // Find all matches with their positions using pre-compiled patterns
   const matches = [];
-  for (const pattern of patterns) {
+  for (const pattern of INLINE_PATTERNS) {
     pattern.regex.lastIndex = 0;
     let match;
     while ((match = pattern.regex.exec(line)) !== null) {
