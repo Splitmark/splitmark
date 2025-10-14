@@ -20,6 +20,7 @@ CODE_OF_CONDUCT.md
 KNOWN_ISSUES.md
 SECURITY.md
 FUNDING.yml
+CLOUD.md
 
 # Development dependencies
 node_modules/

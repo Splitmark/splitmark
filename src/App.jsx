@@ -5,6 +5,7 @@ import { getConfigPath } from './utils/config.js';
 import Editor from './components/Editor.jsx';
 import Preview from './components/Preview.jsx';
 import StatusBar from './components/StatusBar.jsx';
+import { syncFileOnSave } from './cloud/sync/syncOnSave.js';
 
 export default function App({ filePath: initialFilePath, initialContent, layout: initialLayout, showPreview: initialShowPreview, config, onExit }) {
   const [filePath, setFilePath] = useState(initialFilePath);
@@ -13,7 +14,10 @@ export default function App({ filePath: initialFilePath, initialContent, layout:
   const [message, setMessage] = useState('');
   const [layout, setLayout] = useState(initialLayout);
   const [showPreview, setShowPreview] = useState(initialShowPreview);
-  const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 });
+  const [terminalSize, setTerminalSize] = useState({
+    width: process.stdout.columns || 80,
+    height: process.stdout.rows || 24
+  });
   const [cursorPosition, setCursorPosition] = useState({ line: 0, col: 0 });
   const [columnWidthRatio, setColumnWidthRatio] = useState(config?.columnWidthRatio || 75); // Editor width percentage from config
   const [exitWarningShown, setExitWarningShown] = useState(false);
@@ -57,16 +61,22 @@ export default function App({ filePath: initialFilePath, initialContent, layout:
   // Track terminal size and handle resize
   useEffect(() => {
     const updateSize = () => {
-      if (stdout) {
+      if (stdout && stdout.columns && stdout.rows) {
         setTerminalSize({
-          width: stdout.columns || 80,
-          height: stdout.rows || 24,
+          width: stdout.columns,
+          height: stdout.rows,
+        });
+      } else {
+        // Fallback to process.stdout if ink stdout isn't available
+        setTerminalSize({
+          width: process.stdout.columns || 80,
+          height: process.stdout.rows || 24,
         });
       }
     };
 
-    // Set initial size
-    updateSize();
+    // Set initial size with a small delay to ensure proper detection
+    setTimeout(updateSize, 100);
 
     // Listen for resize events
     if (stdout) {
@@ -77,12 +87,31 @@ export default function App({ filePath: initialFilePath, initialContent, layout:
     }
   }, [stdout]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     try {
       writeFileSync(filePath, content, 'utf-8');
       setSaved(true);
       setExitWarningShown(false); // Clear exit warning on save
       setMessage('Saved!');
+
+      // Attempt cloud sync if available
+      try {
+        const syncResult = await syncFileOnSave(filePath);
+        if (syncResult) {
+          // Update message to include sync status
+          if (syncResult.action === 'uploaded' || syncResult.action === 'updated') {
+            setMessage('Saved & synced to cloud!');
+          } else if (syncResult.action === 'conflict') {
+            setMessage('Saved! Cloud sync conflict detected.');
+          } else if (syncResult.action === 'error') {
+            setMessage('Saved! Cloud sync failed.');
+          }
+        }
+      } catch (syncError) {
+        // Don't let sync errors prevent local save success message
+        console.warn('Sync-on-save failed:', syncError.message);
+      }
+
       addTimeout(() => setMessage(''), 2000);
     } catch (error) {
       setMessage(`Error: ${error.message}`);

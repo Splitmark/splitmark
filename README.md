@@ -22,6 +22,7 @@ Splitmark is a terminal-based text editor specifically designed for editing Mark
 - 🎯 **Smart file management** - Configurable default location with automatic folder creation
 - 🎨 **Syntax highlighting** - Color-coded Markdown elements in the editor
 - 💾 **Configuration system** - Customize defaults via `~/.splitmarkrc`
+- ☁️ **Cloud sync (optional)** - Sync files across devices with end-to-end encryption
 
 ## Features
 
@@ -53,6 +54,16 @@ Splitmark is a terminal-based text editor specifically designed for editing Mark
   - Absolute paths work as expected
 - **Config file editing** - Open and edit `~/.splitmarkrc` with Ctrl+O
 
+### Cloud Sync (Optional)
+
+- **End-to-end encryption** - Files encrypted before upload
+- **Cross-device sync** - Keep files in sync across multiple computers
+- **Conflict detection** - Alerts when files change in multiple places
+- **Secure authentication** - JWT-based auth with encrypted credential storage
+- **100% optional** - Works perfectly without cloud features
+
+See [CLOUD.md](CLOUD.md) for complete cloud sync documentation.
+
 ### Navigation
 
 - **Arrow keys** - Move cursor up/down/left/right
@@ -79,7 +90,7 @@ npm install -g splitmark
 ### Local Development
 
 ```bash
-git clone https://github.com/yourusername/splitmark.git
+git clone https://github.com/splitmark/splitmark.git
 cd splitmark
 npm install
 npm link  # Makes 'splitmark' command available globally
@@ -118,13 +129,29 @@ splitmark notes.md --layout side --width 60
 
 ### Command-Line Options
 
-| Option                    | Alias | Description                       | Default |
-| ------------------------- | ----- | --------------------------------- | ------- |
-| `--layout <side\|bottom>` | `-l`  | Preview layout                    | `side`  |
-| `--no-preview`            |       | Disable preview pane              | `false` |
-| `--width <number>`        | `-w`  | Editor width % (side layout only) | `75`    |
-| `--help`                  | `-h`  | Show help                         |         |
-| `--version`               | `-v`  | Show version                      |         |
+| Option                    | Alias | Description                        | Default |
+| ------------------------- | ----- | ---------------------------------- | ------- |
+| `--layout <side\|bottom>` | `-l`  | Preview layout                     | `side`  |
+| `--no-preview`            |       | Disable preview pane               | `false` |
+| `--width <number>`        | `-w`  | Editor width % (side layout only)  | `75`    |
+| `--help`                  | `-h`  | Show help                          |         |
+| `--version`               | `-v`  | Show version                       |         |
+| `--dev`                   |       | Use local dev API (localhost:3000) |         |
+
+### Cloud Commands
+
+| Command                     | Description               |
+| --------------------------- | ------------------------- |
+| `splitmark login`           | Log in to Splitmark Cloud |
+| `splitmark logout`          | Log out from cloud        |
+| `splitmark sync`            | Sync files with cloud     |
+| `splitmark cloud:status`    | Show cloud sync status    |
+| `splitmark cloud:account`   | Show account information  |
+| `splitmark cloud:enable`    | Enable cloud sync         |
+| `splitmark cloud:disable`   | Disable cloud sync        |
+| `splitmark cloud:conflicts` | List sync conflicts       |
+
+See [CLOUD.md](CLOUD.md) for detailed cloud documentation.
 
 ## Keyboard Shortcuts
 
@@ -386,9 +413,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/yourusername/splitmark/issues)
-- 💬 [Discussions](https://github.com/yourusername/splitmark/discussions)
+- 🐛 [Issue Tracker](https://github.com/splitmark/splitmark/issues)
+- 💬 [Discussions](https://github.com/splitmark/splitmark/discussions)
 
 ---
 
