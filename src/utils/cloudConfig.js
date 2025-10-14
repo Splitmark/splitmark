@@ -3,7 +3,7 @@
  * Extends the base config with cloud sync settings
  */
 
-const DEFAULT_CLOUD_CONFIG = {
+export const DEFAULT_CLOUD_CONFIG = {
   enabled: false,
   autoSync: false,
   syncInterval: 300000, // 5 minutes in ms

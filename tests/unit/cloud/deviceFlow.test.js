@@ -2,27 +2,35 @@
  * Tests for device flow authentication
  */
 
-import {
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// Mock the API client constructor function
+const mockPost = jest.fn();
+const MockSplitmarkAPIClient = jest.fn().mockImplementation(() => ({
+  post: mockPost,
+}));
+
+// Mock the credentials module
+const mockSaveToken = jest.fn();
+const mockClearToken = jest.fn();
+
+// Use unstable_mockModule to properly mock ES modules
+jest.unstable_mockModule('../../../src/cloud/api/client.js', () => ({
+  default: MockSplitmarkAPIClient,
+}));
+
+jest.unstable_mockModule('../../../src/cloud/storage/credentials.js', () => ({
+  saveToken: mockSaveToken,
+  clearToken: mockClearToken,
+}));
+
+// Import the functions to test after mocking
+const {
   initiateDeviceFlow,
   pollDeviceToken,
   completeDeviceFlow,
   loginWithDeviceFlow,
-} from '../../../src/cloud/api/auth.js';
-
-// Mock the API client
-jest.mock('../../../src/cloud/api/client.js', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      post: jest.fn(),
-    })),
-  };
-});
-
-// Mock credential storage
-jest.mock('../../../src/cloud/storage/credentials.js', () => ({
-  saveToken: jest.fn(),
-}));
+} = await import('../../../src/cloud/api/auth.js');
 
 describe('Device Flow Authentication', () => {
   beforeEach(() => {
@@ -31,18 +39,13 @@ describe('Device Flow Authentication', () => {
 
   describe('initiateDeviceFlow', () => {
     it('should initiate device flow and return codes', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
-        deviceCode: 'device_123',
-        userCode: 'ABCD-1234',
-        verificationUrl: 'https://splitmark.app/cli-auth',
-        expiresIn: 600,
+      mockPost.mockResolvedValue({
+        device_code: 'device_123',
+        user_code: 'ABCD-1234',
+        verification_uri: 'https://splitmark.app/cli-auth',
+        expires_in: 600,
         interval: 5,
       });
-
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const result = await initiateDeviceFlow('https://api.splitmark.app');
 
@@ -56,26 +59,21 @@ describe('Device Flow Authentication', () => {
       });
 
       expect(mockPost).toHaveBeenCalledWith(
-        '/cli/device-code',
+        '/auth/cli/device-code',
         {},
         { skipAuth: true, rateLimitType: 'auth' }
       );
     });
 
     it('should handle verificationUrlComplete', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
-        deviceCode: 'device_123',
-        userCode: 'ABCD-1234',
-        verificationUrl: 'https://splitmark.app/cli-auth',
-        verificationUrlComplete: 'https://splitmark.app/cli-auth?code=ABCD-1234',
-        expiresIn: 600,
+      mockPost.mockResolvedValue({
+        device_code: 'device_123',
+        user_code: 'ABCD-1234',
+        verification_uri: 'https://splitmark.app/cli-auth',
+        verification_uri_complete: 'https://splitmark.app/cli-auth?code=ABCD-1234',
+        expires_in: 600,
         interval: 5,
       });
-
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const result = await initiateDeviceFlow('https://api.splitmark.app');
 
@@ -83,12 +81,7 @@ describe('Device Flow Authentication', () => {
     });
 
     it('should handle API errors', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockRejectedValue(new Error('Network error'));
-
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
+      mockPost.mockRejectedValue(new Error('Network error'));
 
       await expect(initiateDeviceFlow('https://api.splitmark.app')).rejects.toThrow(
         'Failed to initiate device flow'
@@ -98,14 +91,9 @@ describe('Device Flow Authentication', () => {
 
   describe('pollDeviceToken', () => {
     it('should return pending when authorization is pending', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
+      mockPost.mockResolvedValue({
         error: 'authorization_pending',
       });
-
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const result = await pollDeviceToken('https://api.splitmark.app', 'device_123');
 
@@ -113,10 +101,7 @@ describe('Device Flow Authentication', () => {
     });
 
     it('should return token and user on success', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const { saveToken } = require('../../../src/cloud/storage/credentials.js');
-
-      const mockPost = jest.fn().mockResolvedValue({
+      mockPost.mockResolvedValue({
         token: 'jwt_token_123',
         user: {
           id: 'user_123',
@@ -124,10 +109,6 @@ describe('Device Flow Authentication', () => {
           username: 'testuser',
         },
       });
-
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const result = await pollDeviceToken('https://api.splitmark.app', 'device_123');
 
@@ -140,18 +121,14 @@ describe('Device Flow Authentication', () => {
         },
       });
 
-      expect(saveToken).toHaveBeenCalledWith('jwt_token_123', expect.any(Object));
+      expect(mockSaveToken).toHaveBeenCalledWith('jwt_token_123', expect.any(Object));
     });
 
     it('should throw error on expired token', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
+      mockPost.mockResolvedValue({
         error: 'expired_token',
       });
 
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       await expect(
         pollDeviceToken('https://api.splitmark.app', 'device_123')
@@ -159,14 +136,10 @@ describe('Device Flow Authentication', () => {
     });
 
     it('should throw error on access denied', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
+      mockPost.mockResolvedValue({
         error: 'access_denied',
       });
 
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       await expect(
         pollDeviceToken('https://api.splitmark.app', 'device_123')
@@ -176,10 +149,10 @@ describe('Device Flow Authentication', () => {
 
   describe('completeDeviceFlow', () => {
     it('should poll until success', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
+      const { default: SplitmarkAPIClient } = await import('../../../src/cloud/api/client.js');
       let callCount = 0;
 
-      const mockPost = jest.fn().mockImplementation(() => {
+      mockPost.mockImplementation(() => {
         callCount++;
         if (callCount < 3) {
           return Promise.resolve({ error: 'authorization_pending' });
@@ -190,9 +163,6 @@ describe('Device Flow Authentication', () => {
         });
       });
 
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const progressUpdates = [];
       const onProgress = (progress) => progressUpdates.push(progress);
@@ -212,14 +182,10 @@ describe('Device Flow Authentication', () => {
     });
 
     it('should timeout after expiration', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
+      mockPost.mockResolvedValue({
         error: 'authorization_pending',
       });
 
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       await expect(
         completeDeviceFlow(
@@ -232,15 +198,11 @@ describe('Device Flow Authentication', () => {
     }, 10000);
 
     it('should call onProgress with correct status', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
-      const mockPost = jest.fn().mockResolvedValue({
+      mockPost.mockResolvedValue({
         token: 'jwt_token_123',
         user: { username: 'testuser' },
       });
 
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const progressUpdates = [];
       const onProgress = (progress) => progressUpdates.push(progress);
@@ -264,19 +226,18 @@ describe('Device Flow Authentication', () => {
 
   describe('loginWithDeviceFlow', () => {
     it('should complete full device flow', async () => {
-      const SplitmarkAPIClient = require('../../../src/cloud/api/client.js').default;
       let requestCount = 0;
 
-      const mockPost = jest.fn().mockImplementation((endpoint) => {
-        if (endpoint === '/cli/device-code') {
+      mockPost.mockImplementation((endpoint) => {
+        if (endpoint === '/auth/cli/device-code') {
           return Promise.resolve({
-            deviceCode: 'device_123',
-            userCode: 'ABCD-1234',
-            verificationUrl: 'https://splitmark.app/cli-auth',
-            expiresIn: 600,
+            device_code: 'device_123',
+            user_code: 'ABCD-1234',
+            verification_uri: 'https://splitmark.app/cli-auth',
+            expires_in: 600,
             interval: 0.1,
           });
-        } else if (endpoint === '/cli/token') {
+        } else if (endpoint === '/auth/cli/token') {
           requestCount++;
           if (requestCount < 2) {
             return Promise.resolve({ error: 'authorization_pending' });
@@ -288,9 +249,6 @@ describe('Device Flow Authentication', () => {
         }
       });
 
-      SplitmarkAPIClient.mockImplementation(() => ({
-        post: mockPost,
-      }));
 
       const progressUpdates = [];
       const onProgress = (progress) => progressUpdates.push(progress);
