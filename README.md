@@ -24,6 +24,28 @@ Splitmark is a terminal-based text editor specifically designed for editing Mark
 - 💾 **Configuration system** - Customize defaults via `~/.splitmarkrc`
 - ☁️ **Cloud sync (optional)** - Sync files across devices with end-to-end encryption
 
+## Screenshots
+
+### CLI File Explorer
+
+![File Explorer](screenshots/file-explorer-preview.png)
+_Browse and select files directly from the terminal_
+
+### CLI Editor with Live Preview
+
+![Editor Preview](screenshots/editor-preview.png)
+_Split-view editing with real-time markdown preview_
+
+### Splitmark Cloud - File Management
+
+![Cloud File Management](screenshots/splitmark-cloud-file-preview.png)
+_Manage your files across devices with cloud sync_
+
+### Web Zen Editor
+
+![Zen Editor](screenshots/zen-editor-preview.png)
+_Distraction-free web editing with the same files from your CLI_
+
 ## Features
 
 ### Editing
@@ -104,10 +126,7 @@ npm link  # Makes 'splitmark' command available globally
 # Open file explorer (browse files in default location)
 splitmark
 
-# Open a specific file
-splitmark myfile.md
-
-# Create new file in default location
+# Create new file in default location if it doesn't exist
 splitmark notes.md
 
 # Create nested file (auto-creates folders)
