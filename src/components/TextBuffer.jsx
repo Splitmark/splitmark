@@ -1,59 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Text, useInput, measureElement } from 'ink';
+import React, { useState, useEffect } from 'react';
+import { Box, Text, useInput } from 'ink';
 import { highlightMarkdownLine } from '../utils/syntaxHighlight.js';
 
 let lineIdCounter = 0;
 
 /**
- * Wrap a line of text to fit within maxWidth, breaking at word boundaries
- */
-function wrapTextLine(text, maxWidth) {
-  if (!text || text.length <= maxWidth) return [text];
-
-  const wrappedLines = [];
-  let currentLine = '';
-
-  const words = text.split(' ');
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    const separator = i < words.length - 1 ? ' ' : '';
-
-    // If adding this word would exceed max width
-    if (currentLine.length + word.length + separator.length > maxWidth) {
-      // If current line is empty, the word itself is too long - split it
-      if (currentLine.length === 0) {
-        wrappedLines.push(word.substring(0, maxWidth));
-        let remaining = word.substring(maxWidth);
-        while (remaining.length > maxWidth) {
-          wrappedLines.push(remaining.substring(0, maxWidth));
-          remaining = remaining.substring(maxWidth);
-        }
-        if (remaining.length > 0) {
-          currentLine = remaining + separator;
-        }
-      } else {
-        // Start a new line with this word
-        wrappedLines.push(currentLine.trimEnd());
-        currentLine = word + separator;
-      }
-    } else {
-      currentLine += word + separator;
-    }
-  }
-
-  if (currentLine.length > 0) {
-    wrappedLines.push(currentLine.trimEnd());
-  }
-
-  return wrappedLines.length > 0 ? wrappedLines : [text];
-}
-
-/**
  * Render a line with cursor, selection, and syntax highlighting
  * Optimized to batch characters with same styling
  */
-function renderLineWithCursorAndSelection(lineText, cursorCol, segments, lineIndex, selection, cursorLine) {
+function renderLineWithCursorAndSelection(
+  lineText,
+  cursorCol,
+  segments,
+  lineIndex,
+  selection,
+  cursorLine,
+  chunkStart = 0
+) {
   const elements = [];
 
   // Determine if this line has selection
@@ -72,16 +35,27 @@ function renderLineWithCursorAndSelection(lineText, cursorCol, segments, lineInd
       { line: selection.startLine, col: selection.startCol };
 
     if (lineIndex >= start.line && lineIndex <= end.line) {
-      selStart = lineIndex === start.line ? start.col : 0;
-      selEnd = lineIndex === end.line ? end.col : lineText.length;
+      const chunkEnd = chunkStart + lineText.length;
+      const selectionStart = lineIndex === start.line ? start.col : 0;
+      const selectionEnd = lineIndex === end.line ? end.col : Number.POSITIVE_INFINITY;
+
+      const overlapStart = Math.max(chunkStart, selectionStart);
+      const overlapEnd = Math.min(chunkEnd, selectionEnd);
+
+      if (overlapStart < overlapEnd) {
+        selStart = overlapStart - chunkStart;
+        selEnd = overlapEnd - chunkStart;
+      }
     }
   }
 
   const isCurrentLine = lineIndex === cursorLine;
+  const cursorPosInChunk = isCurrentLine ? cursorCol - chunkStart : -1;
+  const hasCursorInChunk = isCurrentLine && cursorPosInChunk >= 0 && cursorPosInChunk <= lineText.length;
   let currentPos = 0;
 
   // If not current line and no selection, just render segments as-is (fast path)
-  if (!isCurrentLine && selStart === -1) {
+  if (!hasCursorInChunk && selStart === -1) {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       elements.push(
@@ -108,7 +82,7 @@ function renderLineWithCursorAndSelection(lineText, cursorCol, segments, lineInd
       const char = segment.text[pos];
 
       const isSelected = selStart !== -1 && globalPos >= selStart && globalPos < selEnd;
-      const isCursor = isCurrentLine && globalPos === cursorCol;
+      const isCursor = hasCursorInChunk && globalPos === cursorPosInChunk;
 
       let charStyle = { type: 'normal', color: segment.color, bold: segment.bold, italic: segment.italic };
       if (isCursor) charStyle = { type: 'cursor' };
@@ -146,11 +120,90 @@ function renderLineWithCursorAndSelection(lineText, cursorCol, segments, lineInd
   }
 
   // Handle cursor at end of line
-  if (isCurrentLine && cursorCol >= currentPos) {
+  if (hasCursorInChunk && cursorPosInChunk >= currentPos) {
     elements.push(<Text key={keyCounter++} inverse> </Text>);
   }
 
   return elements;
+}
+
+function sliceSegmentsForRange(segments, start, end) {
+  const sliced = [];
+  let currentPos = 0;
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    const segmentEnd = currentPos + segment.text.length;
+
+    if (segmentEnd <= start) {
+      currentPos = segmentEnd;
+      continue;
+    }
+
+    if (currentPos >= end) {
+      break;
+    }
+
+    const sliceStart = Math.max(start, currentPos);
+    const sliceEnd = Math.min(end, segmentEnd);
+    const relativeStart = sliceStart - currentPos;
+    const relativeEnd = sliceEnd - currentPos;
+    const textSlice = segment.text.slice(relativeStart, relativeEnd);
+
+    if (textSlice.length > 0) {
+      sliced.push({ ...segment, text: textSlice });
+    }
+
+    currentPos = segmentEnd;
+  }
+
+  if (sliced.length === 0) {
+    sliced.push({ text: ' ', color: undefined });
+  }
+
+  return sliced;
+}
+
+function wrapLineWithOffsets(text, maxWidth) {
+  if (!text) {
+    return [{ text: '', start: 0, end: 0 }];
+  }
+
+  if (!maxWidth || maxWidth <= 0 || text.length <= maxWidth) {
+    return [{ text, start: 0, end: text.length }];
+  }
+
+  const wrapped = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = Math.min(start + maxWidth, text.length);
+
+    if (end < text.length) {
+      const lastSpace = text.lastIndexOf(' ', end - 1);
+      if (lastSpace > start) {
+        end = lastSpace + 1;
+      }
+    }
+
+    if (end === start) {
+      end = Math.min(start + maxWidth, text.length);
+    }
+
+    const segmentText = text.slice(start, end);
+    if (segmentText.length === 0) {
+      break;
+    }
+
+    wrapped.push({ text: segmentText, start, end });
+    start = end;
+  }
+
+  if (wrapped.length === 0) {
+    return [{ text, start: 0, end: text.length }];
+  }
+
+  return wrapped;
 }
 
 export default function TextBuffer({ content, onChange, isFocused = true, viewportHeight = 20, onCursorMove, editorWidth }) {
@@ -647,6 +700,13 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
   const hasMoreAbove = scrollOffset > 0;
   const hasMoreBelow = scrollOffset + viewportHeight < lines.length;
   const totalLines = lines.length;
+  const lineNumberWidth = Math.max(3, String(totalLines || 1).length);
+  const LINE_SEPARATOR_WIDTH = 3; // space + vertical bar + space
+  const PADDING_WIDTH = 2; // paddingX={1}
+  const numericEditorWidth = typeof editorWidth === 'number' ? editorWidth : null;
+  const availableWidth = numericEditorWidth !== null
+    ? Math.max(5, numericEditorWidth - lineNumberWidth - LINE_SEPARATOR_WIDTH - PADDING_WIDTH)
+    : null;
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -663,19 +723,39 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
       {/* Visible lines */}
       {visibleLines.map((line, visibleIndex) => {
         const actualIndex = scrollOffset + visibleIndex;
-        const lineText = line.text || ' ';
+        const rawLineText = line.text || '';
+        const segments = highlightMarkdownLine(rawLineText);
 
-        // Use the optimized rendering function that handles cursor, selection, and syntax highlighting
-        const segments = highlightMarkdownLine(lineText);
+        const wrappedSegments = availableWidth
+          ? wrapLineWithOffsets(rawLineText, availableWidth)
+          : [{ text: rawLineText, start: 0, end: rawLineText.length }];
 
-        return (
-          <Box key={line.id} flexDirection="row">
-            <Text color="gray">{String(actualIndex + 1).padStart(3, ' ')} │ </Text>
-            <Box flexDirection="row">
-              {renderLineWithCursorAndSelection(lineText, cursorCol, segments, actualIndex, selection, cursorLine)}
+        return wrappedSegments.map((wrappedSegment, wrapIndex) => {
+          const chunkText = wrappedSegment.text;
+          const chunkStart = wrappedSegment.start;
+          const chunkEnd = wrappedSegment.end;
+          const chunkSegments = sliceSegmentsForRange(segments, chunkStart, chunkEnd);
+          const lineNumberText = wrapIndex === 0
+            ? String(actualIndex + 1).padStart(lineNumberWidth, ' ')
+            : ' '.repeat(lineNumberWidth);
+
+          return (
+            <Box key={`${line.id}-${wrapIndex}`} flexDirection="row">
+              <Text color="gray">{lineNumberText} │ </Text>
+              <Box flexDirection="row">
+                {renderLineWithCursorAndSelection(
+                  chunkText,
+                  cursorCol,
+                  chunkSegments,
+                  actualIndex,
+                  selection,
+                  cursorLine,
+                  chunkStart
+                )}
+              </Box>
             </Box>
-          </Box>
-        );
+          );
+        });
       })}
 
       {/* Scroll indicator - bottom */}
