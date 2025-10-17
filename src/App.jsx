@@ -6,6 +6,7 @@ import Editor from './components/Editor.jsx';
 import Preview from './components/Preview.jsx';
 import StatusBar from './components/StatusBar.jsx';
 import { syncFileOnSave } from './cloud/sync/syncOnSave.js';
+import { formatMarkdown } from './utils/formatMarkdown.js';
 
 export default function App({ filePath: initialFilePath, initialContent, layout: initialLayout, showPreview: initialShowPreview, config, onExit }) {
   const [filePath, setFilePath] = useState(initialFilePath);
@@ -118,10 +119,35 @@ export default function App({ filePath: initialFilePath, initialContent, layout:
     }
   }, [filePath, content, addTimeout]);
 
+  const handleFormatDocument = useCallback(() => {
+    try {
+      const formatted = formatMarkdown(content, {
+        wrapColumn: config?.format?.wrapColumn,
+      });
+
+      if (formatted === content) {
+        setMessage('Document already formatted');
+        addTimeout(() => setMessage(''), 1500);
+        return;
+      }
+
+      setContent(formatted);
+      setMessage('Markdown formatted');
+      addTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage(`Format failed: ${error.message}`);
+      addTimeout(() => setMessage(''), 3000);
+    }
+  }, [content, config, addTimeout]);
+
   useInput((input, key) => {
     // Clear exit warning on any key press except Ctrl+X
     if (!(key.ctrl && input === 'x') && exitWarningShown) {
       setExitWarningShown(false);
+    }
+    // Ctrl+Shift+F: Format Markdown
+    if (key.ctrl && key.shift && input === 'f') {
+      handleFormatDocument();
     }
 
     // Ctrl+S: Save

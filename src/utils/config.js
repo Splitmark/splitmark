@@ -43,6 +43,9 @@ const DEFAULT_CONFIG = {
   layout: 'side', // 'side' or 'bottom'
   showPreview: true,
   columnWidthRatio: 75, // Editor width percentage for side-by-side
+  format: {
+    wrapColumn: 80,
+  },
   theme: {
     // VSCode Dark+ inspired colors
     editor: {
@@ -94,6 +97,10 @@ export function loadConfig() {
     return {
       ...DEFAULT_CONFIG,
       ...userConfig,
+      format: {
+        ...DEFAULT_CONFIG.format,
+        ...(userConfig.format || {}),
+      },
       theme: {
         ...DEFAULT_CONFIG.theme,
         ...(userConfig.theme || {}),

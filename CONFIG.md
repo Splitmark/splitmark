@@ -29,6 +29,9 @@ Splitmark automatically detects the correct Documents folder for your platform:
   "layout": "side",
   "showPreview": true,
   "columnWidthRatio": 75,
+  "format": {
+    "wrapColumn": 80
+  },
   "theme": {
     "editor": {
       "background": "#1e1e1e",
@@ -84,6 +87,11 @@ Splitmark automatically detects the correct Documents folder for your platform:
 - **Values**: `25`, `50`, or `75`
 - **Default**: `75`
 - **Description**: Editor width percentage in side-by-side layout (75%, 50%, or 25%)
+
+### `format.wrapColumn`
+- **Type**: Number
+- **Default**: `80`
+- **Description**: Target column width used by the in-editor Markdown formatter (Ctrl+Shift+F)
 
 ### `theme`
 - **Type**: Object
@@ -170,7 +178,10 @@ Edit `~/.splitmarkrc` with your preferred settings:
   "defaultLocation": "/path/to/your/notes",
   "layout": "bottom",
   "showPreview": true,
-  "columnWidthRatio": 50
+  "columnWidthRatio": 50,
+  "format": {
+    "wrapColumn": 72
+  }
 }
 ```
 

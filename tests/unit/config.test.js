@@ -32,9 +32,11 @@ describe('Config utilities', () => {
       expect(config).toHaveProperty('layout');
       expect(config).toHaveProperty('showPreview');
       expect(config).toHaveProperty('columnWidthRatio');
+      expect(config).toHaveProperty('format');
       expect(config).toHaveProperty('theme');
       expect(config.layout).toBe('side');
       expect(config.showPreview).toBe(true);
+      expect(config.format.wrapColumn).toBe(80);
     });
 
     it('should load and merge custom config', () => {
@@ -52,6 +54,7 @@ describe('Config utilities', () => {
       expect(config.defaultLocation).toBe('/custom/path');
       expect(config.layout).toBe('stacked');
       expect(config.showPreview).toBe(true); // Default value preserved
+      expect(config.format.wrapColumn).toBe(80);
 
       // Restore original config
       if (existingConfig) {

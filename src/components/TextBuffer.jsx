@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, measureElement } from 'ink';
 import { highlightMarkdownLine } from '../utils/syntaxHighlight.js';
 
@@ -269,16 +269,60 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
     onChange(lines.map(l => l.text).join('\n'));
   }, [lines, onChange]);
 
-  // Reset when content prop changes (initial load only)
+  // React to external content changes (e.g. formatting commands)
   useEffect(() => {
-    if (lines.length === 0 || (lines.length === 1 && lines[0].text === '')) {
-      const newLines = content.split('\n').map((line) => ({
-        id: `line-${lineIdCounter++}`,
-        text: line
-      }));
-      setLines(newLines);
+    const currentContent = lines.map((line) => line.text).join('\n');
+    if (content === currentContent) {
+      return;
     }
-  }, []);
+
+    const updatedLines = content.split('\n').map((line) => ({
+      id: `line-${lineIdCounter++}`,
+      text: line,
+    }));
+
+    const newCursorLine = Math.min(cursorLine, Math.max(updatedLines.length - 1, 0));
+    const newCursorCol = Math.min(cursorCol, updatedLines[newCursorLine]?.text.length || 0);
+
+    const previousState = {
+      lines: lines.map((line) => ({ ...line })),
+      cursorLine,
+      cursorCol,
+    };
+
+    const newState = {
+      lines: updatedLines.map((line) => ({ ...line })),
+      cursorLine: newCursorLine,
+      cursorCol: newCursorCol,
+    };
+
+    setHistory((prevHistory) => {
+      const truncated = prevHistory.slice(0, historyIndex + 1).map((state) => ({
+        lines: state.lines.map((line) => ({ ...line })),
+        cursorLine: state.cursorLine,
+        cursorCol: state.cursorCol,
+      }));
+
+      let nextHistory = [...truncated, previousState, newState];
+      if (nextHistory.length > 100) {
+        nextHistory = nextHistory.slice(nextHistory.length - 100);
+      }
+
+      setHistoryIndex(nextHistory.length - 1);
+      return nextHistory;
+    });
+
+    setLines(updatedLines);
+    setCursorLine(newCursorLine);
+    setCursorCol(newCursorCol);
+    setSelection(null);
+
+    const maxScroll = Math.max(updatedLines.length - viewportHeight, 0);
+    const adjustedScroll = Math.min(newCursorLine, maxScroll);
+    setScrollOffset(adjustedScroll);
+  // We intentionally depend only on `content` so external updates run once per change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
 
   // Keep cursor visible by adjusting scroll offset
   useEffect(() => {
