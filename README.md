@@ -198,6 +198,7 @@ See [CLOUD.md](CLOUD.md) for detailed cloud documentation.
 | **Ctrl+Y**    | Redo                                    |
 | **Tab**       | Indent (2 spaces)                       |
 | **Shift+Tab** | Unindent                                |
+| **Ctrl+Shift+End** | Add blank line at end of file          |
 | **Enter**     | New line                                |
 | **Backspace** | Delete character (joins lines at start) |
 

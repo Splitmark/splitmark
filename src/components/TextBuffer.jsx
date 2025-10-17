@@ -4,6 +4,13 @@ import { highlightMarkdownLine } from '../utils/syntaxHighlight.js';
 
 let lineIdCounter = 0;
 
+export function appendBlankLineToEnd(existingLines) {
+  return [
+    ...existingLines,
+    { id: `line-${lineIdCounter++}`, text: '' },
+  ];
+}
+
 /**
  * Wrap a line of text to fit within maxWidth, breaking at word boundaries
  */
@@ -437,7 +444,17 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
     }
 
     if (key.end) {
-      if (key.ctrl) {
+      if (key.ctrl && key.shift) {
+        // Ctrl+Shift+End: Add new line at end of file and move cursor there
+        const newLines = appendBlankLineToEnd(lines);
+
+        saveToHistory(lines, cursorLine, cursorCol);
+        setLines(newLines);
+        const lastLine = newLines.length - 1;
+        setCursorLine(lastLine);
+        setCursorCol(0);
+        setSelection(null);
+      } else if (key.ctrl) {
         // Ctrl+End: Go to end of file
         const lastLine = lines.length - 1;
         setCursorLine(lastLine);
