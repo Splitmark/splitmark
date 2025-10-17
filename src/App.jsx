@@ -6,6 +6,7 @@ import Editor from './components/Editor.jsx';
 import Preview from './components/Preview.jsx';
 import StatusBar from './components/StatusBar.jsx';
 import { syncFileOnSave } from './cloud/sync/syncOnSave.js';
+import { formatMarkdown } from './utils/formatMarkdown.js';
 
 export default function App({ filePath: initialFilePath, initialContent, layout: initialLayout, showPreview: initialShowPreview, config, onExit }) {
   const [filePath, setFilePath] = useState(initialFilePath);
@@ -118,6 +119,25 @@ export default function App({ filePath: initialFilePath, initialContent, layout:
     }
   }, [filePath, content, addTimeout]);
 
+  const handleFormat = useCallback(() => {
+    try {
+      const formatted = formatMarkdown(content);
+
+      if (formatted === content) {
+        setMessage('Already formatted');
+        addTimeout(() => setMessage(''), 1500);
+        return;
+      }
+
+      setContent(formatted);
+      setMessage('Formatted markdown');
+      addTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage(`Format error: ${error.message}`);
+      addTimeout(() => setMessage(''), 3000);
+    }
+  }, [content, addTimeout]);
+
   useInput((input, key) => {
     // Clear exit warning on any key press except Ctrl+X
     if (!(key.ctrl && input === 'x') && exitWarningShown) {
@@ -127,6 +147,10 @@ export default function App({ filePath: initialFilePath, initialContent, layout:
     // Ctrl+S: Save
     if (key.ctrl && input === 's') {
       handleSave();
+    }
+    // Ctrl+Shift+F: Format markdown
+    if (key.ctrl && key.shift && input && input.toLowerCase() === 'f') {
+      handleFormat();
     }
     // Ctrl+O: Open config file (or return to original file if editing config)
     if (key.ctrl && input === 'o') {

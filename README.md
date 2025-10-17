@@ -54,6 +54,7 @@ _Distraction-free web editing with the same files from your CLI_
 - **Syntax highlighting** for Markdown (headers, bold, italic, code, links, lists)
 - **Text selection** with Shift+Arrow keys
 - **Undo/Redo** (Ctrl+Z/Ctrl+Y)
+- **Auto-formatting** (Ctrl+Shift+F) for clean Markdown
 - **Smart indentation** (Tab/Shift+Tab)
 - **Word jumping** (Ctrl+Arrow keys)
 - **Line operations** (join lines with backspace at start)
@@ -196,6 +197,7 @@ See [CLOUD.md](CLOUD.md) for detailed cloud documentation.
 | ------------- | --------------------------------------- |
 | **Ctrl+Z**    | Undo                                    |
 | **Ctrl+Y**    | Redo                                    |
+| **Ctrl+Shift+F** | Auto-format Markdown                 |
 | **Tab**       | Indent (2 spaces)                       |
 | **Shift+Tab** | Unindent                                |
 | **Enter**     | New line                                |

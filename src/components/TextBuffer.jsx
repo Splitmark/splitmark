@@ -269,16 +269,49 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
     onChange(lines.map(l => l.text).join('\n'));
   }, [lines, onChange]);
 
-  // Reset when content prop changes (initial load only)
+  // Sync editor when parent content changes (e.g., external formatting)
   useEffect(() => {
-    if (lines.length === 0 || (lines.length === 1 && lines[0].text === '')) {
-      const newLines = content.split('\n').map((line) => ({
-        id: `line-${lineIdCounter++}`,
-        text: line
-      }));
-      setLines(newLines);
+    const currentContent = lines.map(l => l.text).join('\n');
+    if (content === currentContent) {
+      return;
     }
-  }, []);
+
+    const newLines = content.split('\n').map((line) => ({
+      id: `line-${lineIdCounter++}`,
+      text: line
+    }));
+
+    setLines(newLines);
+    setSelection(null);
+
+    const newCursorLine = Math.min(cursorLine, newLines.length - 1);
+    const newCursorCol = Math.min(newLines[newCursorLine]?.text?.length || 0, cursorCol);
+    setCursorLine(newCursorLine);
+    setCursorCol(newCursorCol);
+
+    setHistory(prevHistory => {
+      const truncated = prevHistory
+        .slice(0, historyIndex + 1)
+        .map(state => ({
+          lines: state.lines.map(l => ({ ...l })),
+          cursorLine: state.cursorLine,
+          cursorCol: state.cursorCol,
+        }));
+
+      truncated.push({
+        lines: newLines.map(l => ({ ...l })),
+        cursorLine: newCursorLine,
+        cursorCol: newCursorCol,
+      });
+
+      if (truncated.length > 100) {
+        truncated.shift();
+      }
+
+      setHistoryIndex(truncated.length - 1);
+      return truncated;
+    });
+  }, [content, cursorCol, cursorLine, historyIndex, lines]);
 
   // Keep cursor visible by adjusting scroll offset
   useEffect(() => {
