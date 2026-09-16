@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Box, Text, useInput, measureElement } from 'ink';
 import { highlightMarkdownLine } from '../utils/syntaxHighlight.js';
 
@@ -154,24 +154,40 @@ function renderLineWithCursorAndSelection(lineText, cursorCol, segments, lineInd
 }
 
 export default function TextBuffer({ content, onChange, isFocused = true, viewportHeight = 20, onCursorMove, editorWidth }) {
-  const [lines, setLines] = useState(() =>
+  const [lines, setLinesState] = useState(() =>
     content.split('\n').map((line) => ({ id: `line-${lineIdCounter++}`, text: line }))
   );
-  const [cursorLine, setCursorLine] = useState(0);
-  const [cursorCol, setCursorCol] = useState(0);
+  const [cursorLine, setCursorLineState] = useState(0);
+  const [cursorCol, setCursorColState] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
-  const [selection, setSelection] = useState(null); // { startLine, startCol, endLine, endCol }
+  const [selection, setSelectionState] = useState(null); // { startLine, startCol, endLine, endCol }
 
   // Undo/Redo state - initialize with current state
-  const [history, setHistory] = useState(() => [{
+  const [history, setHistoryState] = useState(() => [{
     lines: content.split('\n').map((line) => ({ id: `line-${lineIdCounter++}`, text: line })),
     cursorLine: 0,
     cursorCol: 0,
   }]);
-  const [historyIndex, setHistoryIndex] = useState(0);
+  const [historyIndex, setHistoryIndexState] = useState(0);
+
+  // Latest editor state, readable synchronously by the input handler.
+  // Ink can deliver several stdin chunks (e.g. one paste) before React re-renders and
+  // re-subscribes the handler, so state captured at render time may already be stale.
+  // Every setter below updates this ref first so the next chunk builds on the previous one.
+  const latest = useRef(null);
+  if (latest.current === null) {
+    latest.current = { lines, cursorLine, cursorCol, selection, history, historyIndex };
+  }
+  const setLines = (value) => { latest.current.lines = value; setLinesState(value); };
+  const setCursorLine = (value) => { latest.current.cursorLine = value; setCursorLineState(value); };
+  const setCursorCol = (value) => { latest.current.cursorCol = value; setCursorColState(value); };
+  const setSelection = (value) => { latest.current.selection = value; setSelectionState(value); };
+  const setHistory = (value) => { latest.current.history = value; setHistoryState(value); };
+  const setHistoryIndex = (value) => { latest.current.historyIndex = value; setHistoryIndexState(value); };
 
   // Helper: Save current state to history
   const saveToHistory = (newLines, newCursorLine, newCursorCol) => {
+    const { history, historyIndex } = latest.current;
     const state = {
       lines: newLines.map(l => ({ ...l })),
       cursorLine: newCursorLine,
@@ -195,6 +211,7 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
 
   // Helper: Undo
   const undo = () => {
+    const { history, historyIndex, cursorLine, cursorCol } = latest.current;
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
       const state = history[newIndex];
@@ -216,6 +233,7 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
 
   // Helper: Redo
   const redo = () => {
+    const { history, historyIndex, cursorLine, cursorCol } = latest.current;
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
       const state = history[newIndex];
@@ -301,6 +319,9 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
 
   useInput((input, key) => {
     if (!isFocused) return;
+
+    // Read the latest state rather than the render-time closure (see `latest` above)
+    const { lines, cursorLine, cursorCol, selection } = latest.current;
 
     // Ctrl+Z: Undo
     if (key.ctrl && input === 'z' && !key.shift) {
@@ -589,11 +610,20 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
       return;
     }
 
-    // Regular character input
+    // Regular character input. Ink delivers a paste as a single multi-character
+    // string, so `input` may span several lines and contain tabs.
     if (input && !key.ctrl && !key.meta) {
       saveToHistory(lines, cursorLine, cursorCol);
 
-      // If there's a selection, replace it
+      // Normalize line endings (CRLF / CR / LF) and expand tabs to match the Tab key
+      const text = input.replace(/\r\n?/g, '\n').replace(/\t/g, '  ');
+      const parts = text.split('\n');
+
+      // Insert at the cursor, or in place of the selection if there is one
+      let baseLines = lines;
+      let insertLine = cursorLine;
+      let insertCol = cursorCol;
+
       if (selection) {
         // Normalize selection to always have start before end
         const isForward = selection.startLine < selection.endLine ||
@@ -606,39 +636,43 @@ export default function TextBuffer({ content, onChange, isFocused = true, viewpo
           { line: selection.endLine, col: selection.endCol } :
           { line: selection.startLine, col: selection.startCol };
 
-        if (start.line === end.line) {
-          // Selection on same line - replace with input
-          const lineText = lines[start.line].text;
-          const newText = lineText.substring(0, start.col) + input + lineText.substring(end.col);
-          const newLines = [...lines];
-          newLines[start.line] = { ...newLines[start.line], text: newText };
-          setLines(newLines);
-          setCursorLine(start.line);
-          setCursorCol(start.col + input.length);
-        } else {
-          // Multi-line selection - replace with input
-          const firstLineText = lines[start.line].text.substring(0, start.col);
-          const lastLineText = lines[end.line].text.substring(end.col);
-          const newText = firstLineText + input + lastLineText;
+        const firstLineText = lines[start.line].text.substring(0, start.col);
+        const lastLineText = lines[end.line].text.substring(end.col);
 
-          const newLines = [
-            ...lines.slice(0, start.line),
-            { ...lines[start.line], text: newText },
-            ...lines.slice(end.line + 1),
-          ];
-          setLines(newLines);
-          setCursorLine(start.line);
-          setCursorCol(start.col + input.length);
-        }
+        baseLines = [
+          ...lines.slice(0, start.line),
+          { ...lines[start.line], text: firstLineText + lastLineText },
+          ...lines.slice(end.line + 1),
+        ];
+        insertLine = start.line;
+        insertCol = start.col;
         setSelection(null);
-      } else {
-        // No selection - insert normally
-        const newText = currentLineText.substring(0, cursorCol) + input + currentLineText.substring(cursorCol);
-        const newLines = [...lines];
-        newLines[cursorLine] = { ...newLines[cursorLine], text: newText };
-        setLines(newLines);
-        setCursorCol(cursorCol + input.length);
       }
+
+      const target = baseLines[insertLine];
+      const before = target.text.substring(0, insertCol);
+      const after = target.text.substring(insertCol);
+
+      // First part continues the current line, last part is followed by the text after the cursor
+      const insertedLines = parts.map((part, index) => {
+        const isFirst = index === 0;
+        const isLast = index === parts.length - 1;
+        return {
+          id: isFirst ? target.id : `line-${lineIdCounter++}`,
+          text: (isFirst ? before : '') + part + (isLast ? after : ''),
+        };
+      });
+
+      const newLines = [
+        ...baseLines.slice(0, insertLine),
+        ...insertedLines,
+        ...baseLines.slice(insertLine + 1),
+      ];
+
+      const lastPart = parts[parts.length - 1];
+      setLines(newLines);
+      setCursorLine(insertLine + parts.length - 1);
+      setCursorCol((parts.length === 1 ? insertCol : 0) + lastPart.length);
     }
   }, { isActive: isFocused });
 
